@@ -1,20 +1,33 @@
-# app.py (Flask Backend)
+import os
 from flask import Flask, request, jsonify, render_template
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-@app.route('/get_material')
-def get_material():
-    selected_class = request.args.get('class')
-    selected_region = request.args.get('region')
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"message": "No file part"})
     
-    # Dummy content - Replace with actual database query or file fetch
-    content = f"Study material for Class {selected_class}, {selected_region} region coming soon!"
-    return jsonify({"content": content})
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"message": "No selected file"})
+
+    filename = secure_filename(file.filename)
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    
+    return jsonify({"message": f"File {filename} uploaded successfully!"})
 
 if __name__ == '__main__':
     app.run(debug=True)
