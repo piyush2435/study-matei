@@ -1,33 +1,34 @@
 import os
-from flask import Flask, request, jsonify, render_template
-from werkzeug.utils import secure_filename
+from flask import Flask, request, jsonify, render_template, send_from_directory
 
 app = Flask(__name__)
-
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = 'uploads'  # Folder where study materials are stored
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({"message": "No file part"})
-    
-    file = request.files['file']
-    
-    if file.filename == '':
-        return jsonify({"message": "No selected file"})
+@app.route('/get_material')
+def get_material():
+    selected_class = request.args.get('class')
 
-    filename = secure_filename(file.filename)
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    
-    return jsonify({"message": f"File {filename} uploaded successfully!"})
+    # Construct the folder path based on selected class
+    folder_path = os.path.join(app.config['UPLOAD_FOLDER'], f'class_{selected_class}')
+
+    if not os.path.exists(folder_path):  # If folder doesn't exist, return message
+        return jsonify({"message": "No study materials available yet.", "files": []})
+
+    files = os.listdir(folder_path)  # List available files
+    file_links = [f"/download/{selected_class}/{file}" for file in files]
+
+    return jsonify({"files": file_links})
+
+@app.route('/download/<class_name>/<filename>')
+def download_file(class_name, filename):
+    folder_path = os.path.join(app.config['UPLOAD_FOLDER'], f'class_{class_name}')
+    return send_from_directory(folder_path, filename)
 
 if __name__ == '__main__':
     app.run(debug=True)
+
